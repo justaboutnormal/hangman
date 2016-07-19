@@ -81,3 +81,19 @@ span {
   left:50%;
   transform: translate(-20%, 75px) rotate(60deg);
 }
+
+.gameOver::before {
+  content: "Game Over";
+  position: absolute;
+  z-index: 1000;
+  top: 50px;
+  left: 13px;
+}
+
+.youWin::before {
+  content: "You Win!";
+  position: absolute;
+  z-index: 1000;
+  top: 50px;
+  left: 20px;
+}

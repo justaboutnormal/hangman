@@ -24,7 +24,11 @@
 (defn guess-letter! [letter]
   (swap! guessed-letters conj letter))
 
+(defn win-game? [word letters]
+  (= -1 (.indexOf (present-word word letters) "_")))
 
+(defn game-over? [word letters]
+  (< 5 (get-mistakes-count word letters)))
 
 
 
@@ -35,25 +39,25 @@
   [:div {:key part :class part}])
 
 (defn gallows [word letters]
-  [:div.gallows
+  [:div {:class-name (str "gallows " (when (game-over? word letters) "gameOver") (when (win-game? word letters) "youWin"))}
    (take (get-mistakes-count word letters) [[body-cmpt "head"] [body-cmpt "body"] [body-cmpt "larm"] [body-cmpt "rarm"] [body-cmpt "lleg"] [body-cmpt "rleg"]])])
 
 (defn displayed-word [word letters]
   [:div.word (present-word (.toUpperCase word) (reduce str letters))])
 
-(defn guess-letter-component [letter guessed-letters]
+(defn guess-letter-component [letter guessed-letters game-over]
   (let [letter-guessed (when (some (set letter) guessed-letters) true)
         key-map {:key (str "guess-" letter)}]
     [:span
-     (if letter-guessed
+     (if (or letter-guessed game-over)
        (assoc key-map :class "guessed")
        (assoc key-map :on-click #(guess-letter! letter)))
      letter]))
 
-(defn all-letters [guessed-letters]
+(defn all-letters [guessed-letters game-over]
   [:div (map
           ;not using #(guess-letter-component %) because that doesn't update the classes in the sub-components
-          (fn [l] [guess-letter-component l guessed-letters])
+          (fn [l] [guess-letter-component l guessed-letters game-over])
           all-letters-coll)])
 
 (defn controls []
@@ -64,7 +68,7 @@
    [:h1 "Hangman!"]
    [gallows @word @guessed-letters]
    [displayed-word @word @guessed-letters]
-   [all-letters @guessed-letters]
+   [all-letters @guessed-letters (or (win-game? @word @guessed-letters) (game-over? @word @guessed-letters))]
    [controls]])
 
 (r/render-component [app-comp]
