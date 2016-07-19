@@ -1,6 +1,6 @@
 # hangman
 
-Just a friendly game of hangman written in Clojure.
+Just a friendly game of hangman written in Clojure. View it here: [Hangman!](http://mahonbaldwin.com/hangman/)
 
 ## Overview
 
