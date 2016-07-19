@@ -1,5 +1,6 @@
 (ns hangman.core
-  (:require [reagent.core :as r]))
+  (:require [reagent.core :as r]
+            [clojure.browser.event :as event]))
 
 (enable-console-print!)
 
@@ -45,9 +46,8 @@
 (defn displayed-word [word letters]
   [:div.word (present-word (.toUpperCase word) (reduce str letters))])
 
-(defn guess-letter-component [letter guessed-letters game-over]
-  (let [letter-guessed (when (some (set letter) guessed-letters) true)
-        key-map {:key (str "guess-" letter)}]
+(defn guess-letter-component [key-map letter guessed-letters game-over]
+  (let [letter-guessed (when (some (set letter) guessed-letters) true)]
     [:span
      (if (or letter-guessed game-over)
        (assoc key-map :class "guessed")
@@ -55,10 +55,9 @@
      letter]))
 
 (defn all-letters [guessed-letters game-over]
-  [:div (map
+  [:div (for [l all-letters-coll]
           ;not using #(guess-letter-component %) because that doesn't update the classes in the sub-components
-          (fn [l] [guess-letter-component l guessed-letters game-over])
-          all-letters-coll)])
+          [guess-letter-component {:key (str "guess-" l)} l guessed-letters game-over])])
 
 (defn controls []
   [:div [:button {:onClick set-new-game!} "New Game"]])
@@ -74,5 +73,12 @@
 (r/render-component [app-comp]
                     (. js/document (getElementById "app")))
 
+(event/listen js/document.body :keypress
+  (fn [e]
+    (let [char (.toUpperCase (.fromCharCode js/String (.-charCode e)))
+          game-over (or (win-game? @word @guessed-letters) (game-over? @word @guessed-letters))]
+      (when (not game-over)
+        (guess-letter! char)))))
 
-(defn on-js-reload [])
+
+;(defn on-js-reload [])
