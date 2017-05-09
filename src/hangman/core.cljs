@@ -1,20 +1,34 @@
 (ns hangman.core
-  (:require [reagent.core :as r]
+  (:require [rum.core :as rum :refer-macros [defc]]
             [clojure.browser.event :as event]))
 
 (enable-console-print!)
 
 ;state
-(defonce all-words-coll ["EQUIVOCATION" "MAXIM"])
+(defonce all-words ["EQUIVOCATION" "MAXIM" "ZENITH" "TENACIOUS" "QUIXOTIC" "MYOCARDIAL INFARCTION" "REHETORICAL" "PARADIGM" "OXYMORON" "MISANTHROPE" "LUCID" "IRONY" "HYPERBOLE"])
 (defonce all-letters-coll (map char (range 65 91)));(int \A) doens't seem to work in clojurescript :( 65 = (int \A) 91 = (+ 1 (int \Z))
 ;mutable-state
-(defonce word (r/atom (rand-nth all-words-coll)))
-(defonce guessed-letters (r/atom #{}))
+(defonce word (atom (rand-nth all-words)))
+(defonce guessed-letters (atom #{}))
+
+
+(defn rand-words [n words]
+  (if (= n (count words))
+    (shuffle (vec words))
+    (recur n (conj (or words #{}) (rand-nth all-words)))))
+
+(defonce possible (atom (rand-words 7 #{@word})))
+(defonce show-possible (atom false))
 
 
 (defn set-new-game! []
-  (reset! word (rand-nth all-words-coll))
-  (reset! guessed-letters #{}))
+  (reset! word (rand-nth all-words))
+  (reset! guessed-letters #{})
+  (reset! possible (rand-words 7 #{@word}))
+  (reset! show-possible false))
+
+(defn toggle-show-possible! []
+  (reset! show-possible (not @show-possible)))
 
 (defn present-word [word letters]
   (clojure.string/replace word (re-pattern (str "(?i)[^" letters "\\s]")) "_"))
@@ -36,42 +50,48 @@
 
 
 
-(defn body-cmpt [part]
-  [:div {:key part :class part}])
 
-(defn gallows [word letters]
+(defc gallows [word letters]
   [:div {:class-name (str "gallows " (when (game-over? word letters) "gameOver") (when (win-game? word letters) "youWin"))}
-   (take (get-mistakes-count word letters) [[body-cmpt "head"] [body-cmpt "body"] [body-cmpt "larm"] [body-cmpt "rarm"] [body-cmpt "lleg"] [body-cmpt "rleg"]])])
+   (take (get-mistakes-count word letters) (for [p ["head" "body" "larm" "rarm" "lleg" "rleg"]]
+                                             [:div {:key p :class p}]))])
 
-(defn displayed-word [word letters]
+(defc displayed-word [word letters]
   [:div.word (present-word (.toUpperCase word) (reduce str letters))])
 
-(defn guess-letter-component [key-map letter guessed-letters game-over]
-  (let [letter-guessed (when (some (set letter) guessed-letters) true)]
-    [:span
-     (if (or letter-guessed game-over)
-       (assoc key-map :class "guessed")
-       (assoc key-map :on-click #(guess-letter! letter)))
-     letter]))
 
-(defn all-letters [guessed-letters game-over]
+(defc all-letters [guessed-letters game-over]
   [:div (for [l all-letters-coll]
-          ;not using #(guess-letter-component %) because that doesn't update the classes in the sub-components
-          [guess-letter-component {:key (str "guess-" l)} l guessed-letters game-over])])
+          (let [guessed (when (some (set l) guessed-letters) true)
+                meta {:key (str "guess-" l)}
+                meta (if (or guessed game-over)
+                       (assoc meta :class "guessed")
+                       (assoc meta :on-click #(guess-letter! l)))]
+            [:span meta l]))])
 
-(defn controls []
-  [:div [:button {:onClick set-new-game!} "New Game"]])
+(defc controls []
+  [:div [:button {:onClick set-new-game!} "New Game"] [:span.tooltip [:span.tooltiptext "See list of potential words"] [:button {:onClick toggle-show-possible!} "Display Hint"]]])
 
-(defn app-comp []
-  [:div
-   [:h1 "Hangman!"]
-   [gallows @word @guessed-letters]
-   [displayed-word @word @guessed-letters]
-   [all-letters @guessed-letters (or (win-game? @word @guessed-letters) (game-over? @word @guessed-letters))]
-   [controls]])
+(defc possible-words []
+  [:div "The word is one of the following"
+   [:ul
+    (for [p @possible]
+      [:li {:key (str "possible-" p)} p])]])
 
-(r/render-component [app-comp]
-                    (. js/document (getElementById "app")))
+(defc app < rum/reactive []
+  (let [w (rum/react word)
+        gl (rum/react guessed-letters)
+        sp (rum/react show-possible)]
+    [:div
+     [:h1 "Hangman!"]
+     (gallows w gl)
+     (displayed-word w gl)
+     (all-letters gl (or (win-game? w gl) (game-over? w gl)))
+     (controls)
+     (and sp (possible-words))]))
+
+
+(rum/mount (app) (.getElementById js/document "app"))
 
 (event/listen js/document.body :keypress
   (fn [e]

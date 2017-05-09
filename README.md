@@ -8,17 +8,14 @@ To run:
 
     lein figwheel
     
-Currently there are only two words the game knows, feel free to fork and add more.
+Currently there are only a short list of words the game knows, feel free to fork and add more.
 
 ## Future
 
-While I created this mostly for practice, in the future I may add:
+While I created this mostly for fun, in the future I may add:
 
 * WordNik integration (or similar API) to automatically select words
   * API keys would not be checked in.
-* A "hint" feature that would all player to:
-  * see the word's definition
-  * get a free letter
 
 ## License
 
